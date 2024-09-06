@@ -19,14 +19,14 @@ import pandas as pd
 
 import sys
 sys.path.append("../TimeBound.v1/")
-import video_language.datasets.ssv2 as ssv2
+import video_language.datasets.charades as charades
 import video_language.tasks.metrics as metrics
 import shared.utils as su
 
 
 def gather_features(df_pair, df_main):
-    video_features_path = ".languagebind_ssv2_video_features.pt"
-    text_features_path = ".languagebind_ssv2_text_features.pt"
+    video_features_path = ".languagebind_charades_video_features.pt"
+    text_features_path = ".languagebind_charades_text_features.pt"
 
     if os.path.exists(video_features_path):
         video_features = torch.load(video_features_path)
@@ -40,12 +40,13 @@ def gather_features(df_pair, df_main):
         iterator = su.log.tqdm_iterator(ids, desc="Computing features")
         video_features = dict()
         text_features = dict()
-        for video_id in iterator:
-            video_path = ssv2.get_video_path_basic(video_id)
+        for _id in iterator:
+            video_id = _id
+            video_path = charades.get_clips_path(video_id)
             assert os.path.exists(video_path), \
                 f"Video path {video_path} does not exist"
-            row = df_main[df_main.id == str(video_id)].iloc[0].to_dict()
-            label = row["label"]
+            row = df_main[df_main.item_id == str(video_id)].iloc[0].to_dict()
+            label = row["cls_name"]
 
             try:
                 # Process inputs
@@ -120,19 +121,19 @@ if __name__ == "__main__":
     model.eval()
 
     # Load CSVs
-    paths = ssv2.get_paths()
-    split = "validation"
-    df_main = ssv2.load_main_csv(paths, split)
-    df_time = ssv2.load_time_csv(paths, split)
-    df_pair = ssv2.load_pair_csv(paths, split)
+    paths = charades.get_paths()
+    split = "test"
+    _, df_main = charades.load_main_csv(paths, split)
+    df_time = charades.load_time_csv(paths, split)
+    df_pair = charades.load_pair_csv(paths, split)
 
     # Debug
-    debug = True
+    debug = False
     if debug:
-        video_id = "81617"
-        row = df_main[df_main.id == video_id].iloc[0].to_dict()
-        label = row["label"]
-        video_path = ssv2.get_video_path_basic(video_id)
+        video_id = "YSKX3_11.8_16.6"
+        row = df_main[df_main.item_id == video_id].iloc[0].to_dict()
+        label = row["cls_name"]
+        video_path = charades.get_clips_path(video_id)
         data = video_process(
             [video_path],
             [label],
@@ -152,4 +153,5 @@ if __name__ == "__main__":
 
     # Save results
     os.makedirs("results", exist_ok=True)
-    results.mean().to_csv("results/scores_ssv2_languagebind.csv")
+    print(results.mean())
+    results.mean().to_csv("results/scores_char_languagebind.csv")
