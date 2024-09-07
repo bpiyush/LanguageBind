@@ -95,6 +95,7 @@ def load_and_transform_video(
         video_outputs = transform(video_data)
 
     elif video_decode_backend == 'opencv':
+        # NOTE: This does not take into account the clip_start_sec and clip_end_sec
         cv2_vr = cv2.VideoCapture(video_path)
         duration = int(cv2_vr.get(cv2.CAP_PROP_FRAME_COUNT))
         frame_id_list = np.linspace(0, duration-1, num_frames, dtype=int)
@@ -123,7 +124,16 @@ class LanguageBindVideoProcessor(ProcessorMixin):
         self.image_processor = load_and_transform_video
         self.tokenizer = tokenizer
 
-    def __call__(self, images=None, text=None, context_length=77, return_tensors=None, **kwargs):
+    def __call__(
+            self,
+            images=None,
+            text=None,
+            starts=0.0,
+            ends=None,
+            context_length=77,
+            return_tensors=None,
+            **kwargs,
+        ):
         if text is None and images is None:
             raise ValueError("You have to specify either text or images. Both cannot be none.")
 
@@ -133,9 +143,19 @@ class LanguageBindVideoProcessor(ProcessorMixin):
 
         if images is not None:
             images = make_list_of_images(images)
-            image_features = [self.image_processor(image, self.transform,
-                                                   video_decode_backend=self.config.vision_config.video_decode_backend,
-                                                   num_frames=self.config.vision_config.num_frames) for image in images]
+            starts = make_list_of_images(starts)
+            ends = make_list_of_images(ends)
+            image_features = [
+                self.image_processor(
+                    image,
+                    self.transform,
+                    video_decode_backend=self.config.vision_config.video_decode_backend,
+                    num_frames=self.config.vision_config.num_frames,
+                    clip_start_sec=start,
+                    clip_end_sec=end,
+                )
+                for (image, start, end) in zip(images, starts, ends)
+            ]
             image_features = torch.stack(image_features)
 
         if text is not None and images is not None:
