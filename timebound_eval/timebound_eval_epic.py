@@ -64,10 +64,10 @@ def gather_features(df_pair, df_main):
                     out = model(**data)
                 text_feat = out.text_embeds.cpu()[0].numpy()
                 video_feat = out.image_embeds.cpu()[0].numpy()
-                video_features[video_id] = video_feat
-                text_features[video_id] = text_feat
+                video_features[narration_id] = video_feat
+                text_features[narration_id] = text_feat
             except:
-                print("Failed to process video", video_id)
+                print("Failed to process video", narration_id)
                 continue
 
         # Save video features
